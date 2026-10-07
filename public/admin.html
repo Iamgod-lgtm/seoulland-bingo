@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>서울랜드 빙고 이벤트 - 선생님 모니터링 관리자</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+</head>
+<body style="background-color: #f1f5f9;">
+
+  <div class="admin-container">
+    <!-- 상단 헤더 -->
+    <header class="admin-header">
+      <div class="admin-title-area">
+        <h1>🎡 서울랜드 빙고 - 실시간 모니터링</h1>
+        <p>각 팀이 제출한 인증 사진과 빙고 달성 현황을 실시간으로 확인합니다. (3초마다 자동 갱신)</p>
+      </div>
+      <div class="admin-actions">
+        <a href="/" target="_blank" class="btn btn-secondary" style="text-decoration: none;">📱 학생 화면 열기</a>
+        <button class="btn btn-secondary" id="btnEditMissions">📝 미션 9가지 편집</button>
+        <button class="btn btn-danger" id="btnResetAll" style="padding: 10px 16px;">🔄 전체 초기화</button>
+      </div>
+    </header>
+
+    <!-- 6개 팀 현황 그리드 -->
+    <div class="teams-summary-grid" id="teamsGrid">
+      <!-- 자바스크립트로 팀별 카드 동적 생성 -->
+    </div>
+  </div>
+
+  <!-- 사진 확대 뷰어 모달 -->
+  <div class="modal-overlay" id="photoViewerModal">
+    <div class="modal-sheet" style="border-radius: 20px; max-width: 600px; padding: 20px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3 id="viewerTitle">인증 사진 확인</h3>
+          <p id="viewerSubtitle">업로드 시간</p>
+        </div>
+        <button class="btn-close" id="viewerCloseBtn">&times;</button>
+      </div>
+      <div style="width: 100%; max-height: 70vh; display: flex; justify-content: center; align-items: center; background: #000; border-radius: 12px; overflow: hidden; margin-top: 10px;">
+        <img id="viewerLargeImg" src="" alt="확대 사진" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+      </div>
+    </div>
+  </div>
+
+  <!-- 미션 9가지 편집 모달 -->
+  <div class="modal-overlay" id="missionsModal">
+    <div class="modal-sheet" style="border-radius: 20px; max-width: 680px; max-height: 85vh;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>📝 미션 9가지 설정</h3>
+          <p>빙고판 1번부터 9번까지의 미션 제목과 설명을 작성하세요.</p>
+        </div>
+        <button class="btn-close" id="missionsCloseBtn">&times;</button>
+      </div>
+      <div id="missionInputsContainer" style="display: flex; flex-direction: column; gap: 12px; margin: 16px 0;">
+        <!-- 9개 입력 폼 동적 생성 -->
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" id="btnCancelMissions" style="flex: 0 0 100px;">취소</button>
+        <button class="btn btn-primary" id="btnSaveMissions" style="flex: 0 0 140px;">💾 저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

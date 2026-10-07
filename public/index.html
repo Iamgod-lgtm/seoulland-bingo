@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>서울랜드 체험학습 미션 빙고</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎡</text></svg>">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- 헤더 -->
+    <header class="app-header">
+      <span class="badge-tag">🎡 서울랜드 현장체험학습</span>
+      <h1 class="app-title">미션 빙고 챌린지</h1>
+      <p class="app-subtitle">미션을 완수하고 인증 사진을 올려 빙고를 완성하세요!</p>
+    </header>
+
+    <!-- 1. 팀 및 팀원 등록 섹션 (최초 접속 시 표시) -->
+    <div id="registrationSection" class="registration-box" style="display: none;">
+      <h2 class="registration-title">🚩 팀 및 팀원 등록</h2>
+      <p class="registration-desc">체험학습을 함께할 팀과 팀원 이름을 입력해주세요.</p>
+      
+      <div class="input-group">
+        <label for="regTeamSelect" class="input-label">우리 팀(조) 선택</label>
+        <select id="regTeamSelect" class="team-select">
+          <option value="team1">1팀</option>
+          <option value="team2">2팀</option>
+          <option value="team3">3팀</option>
+          <option value="team4">4팀</option>
+          <option value="team5">5팀</option>
+          <option value="team6">6팀</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="regMembersInput" class="input-label">팀원 이름 입력</label>
+        <input type="text" id="regMembersInput" class="text-input" placeholder="예: 김철수, 이영희, 박민수, 최지우" autocomplete="off">
+      </div>
+
+      <div class="warning-notice">
+        🔒 <strong>주의사항:</strong> 팀을 등록하고 시작하면 <strong>다른 조로 변경할 수 없습니다.</strong> 올바른 팀과 팀원을 확인 후 시작해주세요!
+      </div>
+
+      <button type="button" class="btn btn-primary" id="btnStartGame" style="width: 100%;">
+        🚀 우리 팀으로 시작하기
+      </button>
+    </div>
+
+    <!-- 2. 팀 고정 완료 카드 (등록 후 및 재방문 시 표시) -->
+    <div id="teamLockedCard" class="team-locked-card" style="display: none;">
+      <div class="team-locked-header">
+        <div class="team-badge-fixed">
+          <span id="lockedTeamName">1팀</span>
+          <span class="lock-pill">🔒 팀 고정</span>
+        </div>
+        <button type="button" class="btn-change-team" id="btnResetTeamLocal">팀 재설정(선생님용)</button>
+      </div>
+      <div class="team-members-display">
+        👥 <strong>팀원:</strong> <span id="lockedTeamMembers">등록 중...</span>
+      </div>
+    </div>
+
+    <!-- 3. 빙고 메인 섹션 -->
+    <div id="mainBingoSection" style="display: none;">
+
+
+    <!-- 빙고 스코어 배너 -->
+    <div class="score-banner">
+      <div class="score-item">
+        <div class="score-label">완료한 미션</div>
+        <div class="score-value"><span id="completedCount">0</span><span class="score-unit">/ 9</span></div>
+      </div>
+      <div class="score-divider"></div>
+      <div class="score-item">
+        <div class="score-label">완성한 빙고</div>
+        <div class="score-value" style="color: #fde047;"><span id="bingoCount">0</span><span class="score-unit">줄</span></div>
+      </div>
+    </div>
+
+    <!-- 3x3 빙고 그리드 -->
+    <div class="bingo-grid" id="bingoGrid">
+      <!-- 자바스크립트로 9개 칸 동적 생성 -->
+    </div>
+
+    <!-- 하단 팁 안내 -->
+    <div class="info-box">
+      💡 <strong>진행 팁:</strong> 칸을 누르면 사진을 바로 찍거나 앨범에서 올릴 수 있어요. 가로, 세로, 대각선으로 3칸을 완성하면 빙고 1줄이 됩니다!
+    </div>
+    </div> <!-- /#mainBingoSection -->
+  </div> <!-- /.app-container -->
+
+
+  <!-- 미션 상세 및 사진 업로드 모달 (Bottom Sheet) -->
+  <div class="modal-overlay" id="missionModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3 id="modalMissionTitle">미션 상세</h3>
+          <p id="modalMissionDesc">미션 설명</p>
+        </div>
+        <button class="btn-close" id="modalCloseBtn">&times;</button>
+      </div>
+
+      <!-- 사진 미리보기 및 촬영 영역 -->
+      <div class="upload-preview-area" id="uploadDropArea">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+        <input type="file" id="galleryInput" accept="image/*" style="display: none;">
+        
+        <div class="upload-placeholder" id="uploadPlaceholder">
+          <div class="upload-icon">📸</div>
+          <span>인증 사진 등록하기</span>
+          <small>터치하여 사진을 찍거나 선택하세요</small>
+        </div>
+        <img id="previewImg" style="display: none;" alt="미리보기">
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btnGallery">📁 앨범에서 선택</button>
+        <button type="button" class="btn btn-primary" id="btnCamera">📷 카메라 촬영</button>
+      </div>
+      
+      <div style="margin-top: 10px; display: flex; gap: 8px;">
+        <button type="button" class="btn btn-primary" id="btnSubmitPhoto" style="display: none;">✨ 이 사진으로 인증 완료하기</button>
+        <button type="button" class="btn btn-danger" id="btnDeletePhoto" style="display: none;">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

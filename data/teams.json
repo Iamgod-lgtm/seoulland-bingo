@@ -1,0 +1,64 @@
+{
+  "teams": [
+    {
+      "id": "team1",
+      "name": "1팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    },
+    {
+      "id": "team2",
+      "name": "2팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    },
+    {
+      "id": "team3",
+      "name": "3팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    },
+    {
+      "id": "team4",
+      "name": "4팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    },
+    {
+      "id": "team5",
+      "name": "5팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    },
+    {
+      "id": "team6",
+      "name": "6팀",
+      "members": "",
+      "completed": {},
+      "bingoCount": 0,
+      "completedCount": 0,
+      "lastUpdated": 0,
+      "completedLines": []
+    }
+  ]
+}
