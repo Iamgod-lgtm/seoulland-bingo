@@ -1,7 +1,8 @@
 let missions = [];
 let currentTeam = null;
 let activeMissionId = null;
-let currentImageData = null;
+let currentMediaData = null;
+let currentMediaType = 'image'; // 'image' | 'video'
 
 // DOM 요소
 const registrationSection = document.getElementById('registrationSection');
@@ -25,15 +26,16 @@ const missionModal = document.getElementById('missionModal');
 const modalTitle = document.getElementById('modalMissionTitle');
 const modalDesc = document.getElementById('modalMissionDesc');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
-const cameraInput = document.getElementById('cameraInput');
-const galleryInput = document.getElementById('galleryInput');
+const photoInput = document.getElementById('photoInput');
+const videoInput = document.getElementById('videoInput');
 const uploadDropArea = document.getElementById('uploadDropArea');
 const uploadPlaceholder = document.getElementById('uploadPlaceholder');
 const previewImg = document.getElementById('previewImg');
-const btnCamera = document.getElementById('btnCamera');
-const btnGallery = document.getElementById('btnGallery');
-const btnSubmitPhoto = document.getElementById('btnSubmitPhoto');
-const btnDeletePhoto = document.getElementById('btnDeletePhoto');
+const previewVideo = document.getElementById('previewVideo');
+const btnSelectPhoto = document.getElementById('btnSelectPhoto');
+const btnSelectVideo = document.getElementById('btnSelectVideo');
+const btnSubmitMedia = document.getElementById('btnSubmitMedia');
+const btnDeleteMedia = document.getElementById('btnDeleteMedia');
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -41,24 +43,20 @@ function showToast(msg) {
   setTimeout(() => toastEl.classList.remove('show'), 2500);
 }
 
-// 1. 앱 초기화 (팀 고정 여부 확인)
+// 1. 앱 초기화
 async function initApp() {
   try {
-    // 9개 미션 정보 불러오기
     const resM = await fetch('/api/missions');
     const dataM = await resM.json();
     missions = dataM.missions || [];
 
-    // 로컬 스토리지에 저장된 팀 고정 상태 확인
     const isLocked = localStorage.getItem('my_team_locked') === 'true';
     const savedTeamId = localStorage.getItem('my_team_id');
 
     if (isLocked && savedTeamId) {
-      // 이미 고정된 조가 있는 경우 -> 바로 빙고판으로 직행!
       showLockedState(savedTeamId);
       await loadTeamData(savedTeamId);
     } else {
-      // 아직 등록되지 않은 경우 -> 등록 화면 표시
       showRegistrationState();
     }
   } catch (err) {
@@ -67,20 +65,17 @@ async function initApp() {
   }
 }
 
-// 등록 화면 표시
 function showRegistrationState() {
   registrationSection.style.display = 'block';
   teamLockedCard.style.display = 'none';
   mainBingoSection.style.display = 'none';
 }
 
-// 고정된 빙고판 화면 표시
 function showLockedState(teamId) {
   registrationSection.style.display = 'none';
   teamLockedCard.style.display = 'block';
   mainBingoSection.style.display = 'block';
 
-  // 팀 번호 표시
   const teamNum = teamId.replace('team', '');
   lockedTeamName.textContent = `${teamNum}팀`;
 
@@ -88,7 +83,7 @@ function showLockedState(teamId) {
   lockedTeamMembers.textContent = savedMembers;
 }
 
-// 2. 팀 및 팀원 등록 실행
+// 2. 팀 등록
 async function handleRegisterTeam() {
   const selectedTeamId = regTeamSelect.value;
   const membersText = regMembersInput.value.trim();
@@ -104,7 +99,6 @@ async function handleRegisterTeam() {
   if (!confirm(confirmMsg)) return;
 
   try {
-    // 서버에 팀원 정보 저장
     const res = await fetch('/api/team_members', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -116,7 +110,6 @@ async function handleRegisterTeam() {
     const data = await res.json();
 
     if (data.success) {
-      // 로컬 스토리지에 영구 고정 저장 (재접속 시에도 유지)
       localStorage.setItem('my_team_id', selectedTeamId);
       localStorage.setItem('my_team_members', membersText);
       localStorage.setItem('my_team_locked', 'true');
@@ -130,11 +123,11 @@ async function handleRegisterTeam() {
     }
   } catch (err) {
     console.error('팀 등록 실패:', err);
-    alert('서버와의 통신에 실패했습니다.');
+    alert('서버 통신 오류');
   }
 }
 
-// 3. 팀 데이터 로드 및 UI 갱신
+// 3. 팀 데이터 로드
 async function loadTeamData(teamId) {
   try {
     const res = await fetch(`/api/team?id=${teamId}`);
@@ -152,14 +145,13 @@ async function loadTeamData(teamId) {
   }
 }
 
-// 4. 3x3 빙고판 렌더링
+// 4. 3x3 빙고판 렌더링 (사진/동영상 구분 지원)
 function renderBingoBoard() {
   if (!currentTeam) return;
 
   const completed = currentTeam.completed || {};
   const completedLines = currentTeam.completedLines || [];
   
-  // 빙고 완성 라인에 포함된 셀 번호 모음
   const lineCellSet = new Set();
   completedLines.forEach(line => line.forEach(id => lineCellSet.add(id)));
 
@@ -170,7 +162,8 @@ function renderBingoBoard() {
 
   missions.forEach((m, idx) => {
     const cellId = m.id || (idx + 1);
-    const isDone = completed[cellId] && completed[cellId].photoUrl;
+    const mediaItem = completed[cellId];
+    const isDone = mediaItem && (mediaItem.photoUrl || mediaItem.mediaUrl);
     const isLine = lineCellSet.has(cellId);
 
     const cell = document.createElement('div');
@@ -178,9 +171,22 @@ function renderBingoBoard() {
     cell.onclick = () => openMissionModal(m);
 
     if (isDone) {
+      const url = mediaItem.mediaUrl || mediaItem.photoUrl;
+      const isVideo = mediaItem.mediaType === 'video' || url.match(/\.(mp4|webm|mov)$/i);
+
+      let mediaBgHtml = '';
+      if (isVideo) {
+        mediaBgHtml = `
+          <video class="cell-photo-bg" src="${url}" muted loop autoplay playsinline></video>
+          <div style="position: absolute; top: 6px; right: 6px; background: rgba(219, 39, 119, 0.85); color: white; border-radius: 6px; padding: 1px 5px; font-size: 10px; font-weight: 700; z-index: 3;">🎬 영상</div>
+        `;
+      } else {
+        mediaBgHtml = `<img class="cell-photo-bg" src="${url}" alt="인증샷">`;
+      }
+
       cell.innerHTML = `
         <span class="cell-number">${cellId}</span>
-        <img class="cell-photo-bg" src="${completed[cellId].photoUrl}" alt="인증샷">
+        ${mediaBgHtml}
         <div class="cell-content-overlay">
           <div class="check-mark">✓</div>
           <div class="cell-title">${m.title}</div>
@@ -202,26 +208,37 @@ function renderBingoBoard() {
 // 5. 모달 열기
 function openMissionModal(mission) {
   activeMissionId = mission.id;
-  currentImageData = null;
+  currentMediaData = null;
 
   modalTitle.textContent = `${mission.id}번: ${mission.title}`;
-  modalDesc.textContent = mission.description || '미션을 수행하고 인증 사진을 등록하세요.';
+  modalDesc.textContent = mission.description || '미션을 수행하고 인증 사진이나 동영상을 등록하세요.';
 
   const completed = (currentTeam.completed || {})[mission.id];
 
-  if (completed && completed.photoUrl) {
-    // 이미 완료된 사진이 있을 때
-    previewImg.src = completed.photoUrl;
-    previewImg.style.display = 'block';
+  if (completed && (completed.photoUrl || completed.mediaUrl)) {
+    const url = completed.mediaUrl || completed.photoUrl;
+    const isVideo = completed.mediaType === 'video' || url.match(/\.(mp4|webm|mov)$/i);
+
     uploadPlaceholder.style.display = 'none';
-    btnSubmitPhoto.style.display = 'none';
-    btnDeletePhoto.style.display = 'block';
+    if (isVideo) {
+      previewImg.style.display = 'none';
+      previewVideo.src = url;
+      previewVideo.style.display = 'block';
+    } else {
+      previewVideo.style.display = 'none';
+      previewImg.src = url;
+      previewImg.style.display = 'block';
+    }
+    btnSubmitMedia.style.display = 'none';
+    btnDeleteMedia.style.display = 'block';
   } else {
-    // 아직 미인증일 때
     previewImg.style.display = 'none';
+    previewVideo.style.display = 'none';
+    previewVideo.pause();
+    previewVideo.src = '';
     uploadPlaceholder.style.display = 'flex';
-    btnSubmitPhoto.style.display = 'none';
-    btnDeletePhoto.style.display = 'none';
+    btnSubmitMedia.style.display = 'none';
+    btnDeleteMedia.style.display = 'none';
   }
 
   missionModal.classList.add('active');
@@ -229,12 +246,14 @@ function openMissionModal(mission) {
 
 function closeMissionModal() {
   missionModal.classList.remove('active');
-  cameraInput.value = '';
-  galleryInput.value = '';
-  currentImageData = null;
+  photoInput.value = '';
+  videoInput.value = '';
+  previewVideo.pause();
+  previewVideo.src = '';
+  currentMediaData = null;
 }
 
-// 6. 스마트폰 사진 압축 (Canvas 리사이징)
+// 6. 이미지 압축 처리
 function compressAndLoadImage(file) {
   if (!file) return;
 
@@ -262,29 +281,60 @@ function compressAndLoadImage(file) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      // JPEG 압축 (품질 0.82)
       const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      currentImageData = compressedDataUrl;
+      currentMediaData = compressedDataUrl;
+      currentMediaType = 'image';
 
-      // 미리보기 반영
+      previewVideo.style.display = 'none';
+      previewVideo.pause();
       previewImg.src = compressedDataUrl;
       previewImg.style.display = 'block';
       uploadPlaceholder.style.display = 'none';
-      btnSubmitPhoto.style.display = 'block';
-      btnSubmitPhoto.textContent = '✨ 이 사진으로 인증 완료하기';
-      btnSubmitPhoto.disabled = false;
+
+      btnSubmitMedia.style.display = 'block';
+      btnSubmitMedia.textContent = '✨ 이 사진으로 인증 완료하기';
+      btnSubmitMedia.disabled = false;
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-// 7. 사진 서버 전송
-async function submitPhoto() {
-  if (!currentImageData || !activeMissionId || !currentTeam) return;
+// 7. 동영상 파일 로드 (최대 35MB 제한)
+function loadVideoFile(file) {
+  if (!file) return;
 
-  btnSubmitPhoto.disabled = true;
-  btnSubmitPhoto.textContent = '⏳ 업로드 중...';
+  const maxSizeBytes = 35 * 1024 * 1024; // 35MB
+  if (file.size > maxSizeBytes) {
+    alert('동영상 용량이 너무 큽니다 (최대 35MB).\n현장 빠른 전송을 위해 10~15초 이내의 짧은 영상을 선택해주세요!');
+    return;
+  }
+
+  showToast('⏳ 동영상 불러오는 중...');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentMediaData = e.target.result;
+    currentMediaType = 'video';
+
+    previewImg.style.display = 'none';
+    previewVideo.src = e.target.result;
+    previewVideo.style.display = 'block';
+    uploadPlaceholder.style.display = 'none';
+    previewVideo.play().catch(() => {});
+
+    btnSubmitMedia.style.display = 'block';
+    btnSubmitMedia.textContent = '✨ 이 동영상으로 인증 완료하기';
+    btnSubmitMedia.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 8. 미디어 서버 전송
+async function submitMedia() {
+  if (!currentMediaData || !activeMissionId || !currentTeam) return;
+
+  btnSubmitMedia.disabled = true;
+  btnSubmitMedia.textContent = currentMediaType === 'video' ? '⏳ 동영상 업로드 중 (잠시 대기)...' : '⏳ 업로드 중...';
 
   try {
     const prevBingoCount = currentTeam.bingoCount || 0;
@@ -295,7 +345,8 @@ async function submitPhoto() {
       body: JSON.stringify({
         teamId: currentTeam.id,
         missionId: activeMissionId,
-        imageBase64: currentImageData
+        mediaBase64: currentMediaData,
+        mediaType: currentMediaType
       })
     });
 
@@ -308,23 +359,23 @@ async function submitPhoto() {
       if (data.bingoCount > prevBingoCount) {
         showToast(`🎉 축하합니다! ${data.bingoCount}줄 빙고를 달성했습니다!`);
       } else {
-        showToast('✅ 미션 인증 사진이 등록되었습니다!');
+        showToast(currentMediaType === 'video' ? '🎬 미션 동영상이 등록되었습니다!' : '✅ 미션 인증 사진이 등록되었습니다!');
       }
     } else {
       showToast('업로드에 실패했습니다: ' + (data.message || '오류'));
-      btnSubmitPhoto.disabled = false;
+      btnSubmitMedia.disabled = false;
     }
   } catch (err) {
-    console.error('업로드 요청 오류:', err);
-    showToast('서버 연결에 실패했습니다.');
-    btnSubmitPhoto.disabled = false;
+    console.error('업로드 에러:', err);
+    showToast('서버 업로드 실패. 파일 용량을 확인해주세요.');
+    btnSubmitMedia.disabled = false;
   }
 }
 
-// 8. 사진 삭제
-async function deletePhoto() {
+// 9. 미디어 삭제
+async function deleteMedia() {
   if (!activeMissionId || !currentTeam) return;
-  if (!confirm('등록된 인증 사진을 삭제하시겠습니까?')) return;
+  if (!confirm('등록된 인증 미디어를 삭제하시겠습니까?')) return;
 
   try {
     const res = await fetch('/api/delete_photo', {
@@ -341,14 +392,14 @@ async function deletePhoto() {
       currentTeam = data.team;
       renderBingoBoard();
       closeMissionModal();
-      showToast('인증 사진이 삭제되었습니다.');
+      showToast('인증 파일이 삭제되었습니다.');
     }
   } catch (err) {
     showToast('삭제 실패: 서버 오류');
   }
 }
 
-// 9. 실수로 조를 잘못 선택했을 때 (선생님 확인용 재설정)
+// 선생님용 팀 재설정
 btnResetTeamLocal.addEventListener('click', () => {
   const pwd = prompt('선생님 확인 비밀번호를 입력해주세요.\n(기본 비밀번호: 1234)');
   if (pwd === '1234') {
@@ -357,43 +408,36 @@ btnResetTeamLocal.addEventListener('click', () => {
       localStorage.removeItem('my_team_id');
       localStorage.removeItem('my_team_members');
       showRegistrationState();
-      showToast('팀 선택이 초기화되었습니다. 다시 등록해주세요.');
+      showToast('팀 선택이 초기화되었습니다.');
     }
   } else if (pwd !== null) {
     alert('비밀번호가 일치하지 않습니다.');
   }
 });
 
-// 이벤트 리스너 바인딩
+// 이벤트 바인딩
 btnStartGame.addEventListener('click', handleRegisterTeam);
-
 modalCloseBtn.addEventListener('click', closeMissionModal);
 missionModal.addEventListener('click', (e) => {
   if (e.target === missionModal) closeMissionModal();
 });
 
-btnCamera.addEventListener('click', () => cameraInput.click());
-btnGallery.addEventListener('click', () => galleryInput.click());
-uploadDropArea.addEventListener('click', (e) => {
-  if (e.target === uploadDropArea || e.target.closest('.upload-placeholder')) {
-    cameraInput.click();
-  }
-});
+btnSelectPhoto.addEventListener('click', () => photoInput.click());
+btnSelectVideo.addEventListener('click', () => videoInput.click());
 
-cameraInput.addEventListener('change', (e) => {
+photoInput.addEventListener('change', (e) => {
   if (e.target.files && e.target.files[0]) {
     compressAndLoadImage(e.target.files[0]);
   }
 });
 
-galleryInput.addEventListener('change', (e) => {
+videoInput.addEventListener('change', (e) => {
   if (e.target.files && e.target.files[0]) {
-    compressAndLoadImage(e.target.files[0]);
+    loadVideoFile(e.target.files[0]);
   }
 });
 
-btnSubmitPhoto.addEventListener('click', submitPhoto);
-btnDeletePhoto.addEventListener('click', deletePhoto);
+btnSubmitMedia.addEventListener('click', submitMedia);
+btnDeleteMedia.addEventListener('click', deleteMedia);
 
-// 앱 시작
 window.addEventListener('DOMContentLoaded', initApp);

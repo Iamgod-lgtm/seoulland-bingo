@@ -86,11 +86,16 @@ function renderTeams() {
       const cellData = completed[i];
       const missionInfo = missions.find(m => m.id === i) || { title: `미션 ${i}` };
 
-      if (cellData && cellData.photoUrl) {
+      if (cellData && (cellData.photoUrl || cellData.mediaUrl)) {
+        const url = cellData.mediaUrl || cellData.photoUrl;
+        const isVideo = cellData.mediaType === 'video' || url.match(/\.(mp4|webm|mov)$/i);
+        const mediaTag = isVideo 
+          ? `<video src="${url}" muted style="width: 100%; height: 100%; object-fit: cover;"></video><div class="mini-check" style="background: rgba(219,39,119,0.9); font-size: 8px;">🎬</div>`
+          : `<img src="${url}" alt="인증샷"><div class="mini-check">✓</div>`;
+
         miniCellsHtml += `
-          <div class="mini-cell done" onclick="openPhotoViewer('${t.name}', '${missionInfo.title}', '${cellData.photoUrl}', ${cellData.timestamp})">
-            <img src="${cellData.photoUrl}" alt="인증샷">
-            <div class="mini-check">✓</div>
+          <div class="mini-cell done" onclick="openPhotoViewer('${t.name}', '${missionInfo.title}', '${url}', ${cellData.timestamp}, '${isVideo ? 'video' : 'image'}')">
+            ${mediaTag}
           </div>
         `;
       } else {
@@ -126,25 +131,46 @@ function renderTeams() {
       </div>
     `;
 
-
     teamsGrid.appendChild(card);
   });
 }
 
-// 5. 사진 확대 모달 열기
-window.openPhotoViewer = function(teamName, missionTitle, photoUrl, timestamp) {
+// 5. 미디어(사진/동영상) 확대 뷰어 모달 열기
+const viewerVideo = document.getElementById('viewerVideo');
+
+window.openPhotoViewer = function(teamName, missionTitle, mediaUrl, timestamp, mediaType) {
   viewerTitle.textContent = `[${teamName}] ${missionTitle}`;
   viewerSubtitle.textContent = timestamp ? `제출 시간: ${new Date(timestamp).toLocaleString()}` : '';
-  viewerLargeImg.src = photoUrl;
+
+  if (mediaType === 'video' || mediaUrl.match(/\.(mp4|webm|mov)$/i)) {
+    viewerLargeImg.style.display = 'none';
+    viewerVideo.src = mediaUrl;
+    viewerVideo.style.display = 'block';
+    viewerVideo.play().catch(() => {});
+  } else {
+    viewerVideo.pause();
+    viewerVideo.src = '';
+    viewerVideo.style.display = 'none';
+    viewerLargeImg.src = mediaUrl;
+    viewerLargeImg.style.display = 'block';
+  }
+
   photoViewerModal.classList.add('active');
 };
 
-viewerCloseBtn.addEventListener('click', () => {
+function closePhotoViewer() {
   photoViewerModal.classList.remove('active');
-});
+  if (viewerVideo) {
+    viewerVideo.pause();
+    viewerVideo.src = '';
+  }
+}
+
+viewerCloseBtn.addEventListener('click', closePhotoViewer);
 photoViewerModal.addEventListener('click', (e) => {
-  if (e.target === photoViewerModal) photoViewerModal.classList.remove('active');
+  if (e.target === photoViewerModal) closePhotoViewer();
 });
+
 
 // 6. 미션 편집 모달
 btnEditMissions.addEventListener('click', () => {

@@ -40,10 +40,12 @@
         <button class="btn-close" id="viewerCloseBtn">&times;</button>
       </div>
       <div style="width: 100%; max-height: 70vh; display: flex; justify-content: center; align-items: center; background: #000; border-radius: 12px; overflow: hidden; margin-top: 10px;">
-        <img id="viewerLargeImg" src="" alt="확대 사진" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+        <img id="viewerLargeImg" src="" alt="확대 사진" style="max-width: 100%; max-height: 70vh; object-fit: contain; display: none;">
+        <video id="viewerVideo" controls playsinline style="max-width: 100%; max-height: 70vh; display: none;"></video>
       </div>
     </div>
   </div>
+
 
   <!-- 미션 9가지 편집 모달 -->
   <div class="modal-overlay" id="missionsModal">

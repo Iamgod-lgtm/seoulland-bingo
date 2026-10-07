@@ -41,11 +41,12 @@ def save_json(filepath, data):
 def calculate_bingo(completed_dict):
     completed_ids = set()
     for mid, info in completed_dict.items():
-        if info and info.get('photoUrl'):
+        if info and (info.get('photoUrl') or info.get('mediaUrl')):
             try:
                 completed_ids.add(int(mid))
             except ValueError:
                 pass
+
     
     bingo_count = 0
     completed_lines = []
@@ -166,28 +167,45 @@ class BingoHandler(BaseHTTPRequestHandler):
         if path == '/api/upload':
             team_id = body.get('teamId')
             mission_id = body.get('missionId')
-            img_b64 = body.get('imageBase64')
+            media_b64 = body.get('mediaBase64') or body.get('imageBase64')
+            media_type = body.get('mediaType', 'image')
 
-            if not team_id or not mission_id or not img_b64:
+            if not team_id or not mission_id or not media_b64:
                 self.send_json(400, {"success": False, "message": "Missing required fields"})
                 return
 
+            ext = 'jpg'
             try:
-                if ',' in img_b64:
-                    img_b64 = img_b64.split(',', 1)[1]
-                img_bytes = base64.b64decode(img_b64)
+                if 'data:' in media_b64 and ';base64,' in media_b64:
+                    header, media_b64 = media_b64.split(';base64,', 1)
+                    mime = header.replace('data:', '').lower()
+                    if 'video' in mime:
+                        media_type = 'video'
+                        if 'webm' in mime: ext = 'webm'
+                        elif 'mov' in mime or 'quicktime' in mime: ext = 'mov'
+                        else: ext = 'mp4'
+                    elif 'image' in mime:
+                        media_type = 'image'
+                        if 'png' in mime: ext = 'png'
+                        elif 'gif' in mime: ext = 'gif'
+                        elif 'webp' in mime: ext = 'webp'
+                        else: ext = 'jpg'
+                elif ',' in media_b64:
+                    media_b64 = media_b64.split(',', 1)[1]
+
+                media_bytes = base64.b64decode(media_b64)
             except Exception as e:
-                self.send_json(400, {"success": False, "message": f"Invalid image data: {str(e)}"})
+                self.send_json(400, {"success": False, "message": f"Invalid media data: {str(e)}"})
                 return
 
             timestamp = int(time.time() * 1000)
-            filename = f"{team_id}_m{mission_id}_{timestamp}.jpg"
+            filename = f"{team_id}_m{mission_id}_{timestamp}.{ext}"
             filepath = os.path.join(UPLOADS_DIR, filename)
 
             with open(filepath, 'wb') as f:
-                f.write(img_bytes)
+                f.write(media_bytes)
 
-            photo_url = f"/uploads/{filename}"
+            media_url = f"/uploads/{filename}"
             teams_data = load_json(TEAMS_FILE, {"teams": []})
             team = next((t for t in teams_data.get("teams", []) if t["id"] == team_id), None)
 
@@ -199,9 +217,12 @@ class BingoHandler(BaseHTTPRequestHandler):
                 team["completed"] = {}
 
             team["completed"][str(mission_id)] = {
-                "photoUrl": photo_url,
+                "photoUrl": media_url,
+                "mediaUrl": media_url,
+                "mediaType": media_type,
                 "timestamp": timestamp
             }
+
 
             bingo_count, completed_lines, completed_count = calculate_bingo(team["completed"])
             team["bingoCount"] = bingo_count
